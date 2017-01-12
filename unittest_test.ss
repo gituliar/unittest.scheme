@@ -59,24 +59,21 @@
 (import (rnrs)
         (unittest))
 
-(define-test "fast" '(fast)
-  (lambda (t)
-    (assert-true? #t)))
+(define-test "fast" (fast)
+  (assert-true? #t))
 
-(define-test "slow" '(slow)
-  (lambda (t)
-    (assert-true? #t)))
+(define-test "slow" (slow)
+  (assert-true? #t))
 
 (let-test
   ([t #t]
    [f #f])
 
-  (define-test "t #1" '()
+  (define-test "t #1" ()
     (assert-true? t))
 
-  (define-test "f #1" '()
+  (define-test "f #1" ()
     (assert-true? f)))
 
-(define-test "slow fast-maple" '(slow fast-maple)
-  (lambda (t)
-    (assert-true? #t)))
+(define-test "slow fast-maple" (slow fast-maple)
+  (assert-true? #t))

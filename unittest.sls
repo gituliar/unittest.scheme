@@ -42,8 +42,8 @@
 (define-syntax define-test
   (syntax-rules ()
     ((_ label tags body ...)
-     (if (active-test? tags)
-         (run-test label tags (lambda () body ...))))))
+     (if (active-test? (quote tags))
+         (run-test label (quote tags) (lambda () body ...))))))
 
 (define (print-test-report)
   (let ((tests-total (+ *tests-pass* *tests-fail*)))
