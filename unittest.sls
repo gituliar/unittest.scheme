@@ -1,58 +1,85 @@
-;;; This file contains implementation of the unit testing with tests.  For more
-;;; details see 'unittest_test.ss' file.
+;;; A minimalistic unit testing framework for Chez Scheme.
 ;;;
-;;; Author: Oleksandr Gituliar <oleksandr@gituliar.net>
-;;;   Date: 2017-01-02
+;;; Its unique feature is the ability to select and execute tests by a set
+;;; tags. It works like this: each test is defined with a set of tags which
+;;; during the execution are compared with a set of active tags defined by
+;;; `run-tests` function. If these sets have common tags then the test is
+;;; executed, othervise it is ignored.
+;;;
+;;; Author:  Oleksandr Gituliar <oleksandr@gituliar.net>
+;;; Version: 17.01.12
 
 (library (unittest)
-  (export define-test assert-eq? assert-true? run-tests)
+  (export assert-true? define-test let-test print-test-report run-tests)
   (import (chezscheme))
 
-(define *tests* '())
-(define *tests-failed* 0)
-(define *tests-passed* 0)
+(define *active-tags* #f)
+(define *tests-fail* 0)
+(define *tests-pass* 0)
+
+(define *depth* 0)
+
+
+(define (assert-true? ex)
+  (eq? ex #t))
 
 
 (define (member?  obj ls)
     (and (member obj ls) #t))
 
-(define for-each-apply
-  (lambda (f ls)
-    (for-each (lambda (x) (apply f x)) ls)))
+(define (active-test? test-tags)
+  (if (or (eq? *active-tags* #t)
+          (null? test-tags))
+      #t
+      (let active-test-rec?
+           ([tags test-tags])
+           (if (null? tags)
+               #f
+               (or (member? (car tags) *active-tags*)
+                   (active-test-rec? (cdr tags)))))))
 
-(define (assert-true? expr)
-  (eq? expr #t))
+(define-syntax define-test
+  (syntax-rules ()
+    ((_ label tags body ...)
+     (if (active-test? tags)
+         (run-test label tags (lambda () body ...))))))
 
-(define assert-eq?
-  (lambda (a b)
-    (eq? a b)))
+(define (print-test-report)
+  (if (> *depth* 1)
+      (set! *depth* (- *depth* 1))
+      (let ((tests-total (+ *tests-pass* *tests-fail*)))
+       (begin
+         (printf "Run ~s tests (PASS: ~s, FAIL: ~s)\n"
+                 tests-total
+                 *tests-pass*
+                 *tests-fail*)))))
 
-(define define-test
-  (lambda (label tags test)
-    (set! *tests* (cons (list label tags test) *tests*))))
+(define-syntax let-test
+  (syntax-rules ()
+    ((_ ([v1 e1] ...) body ...)
+     (let ([v1 (delay (begin (printf "Eval ~s\n" 'v1) e1))] ...)
+       (let-syntax
+         ((v1 (identifier-syntax (force v1))) ...)
+         body ...)))))
 
-(define (select-tests-by-tags tests tags)
-  ;; This routine selects a list of tests, out of a given list `tests',
-  ;; whose tags are members of a given list `tags'.
-  '())
+(define (run-test label tags test)
+  (begin
+    (printf "Run ~s\n" label)
+    (test)
+    (set! *tests-pass* (+ *tests-pass* 1))))
 
-(define run-tests
-  (lambda (run-tags)
-    (printf "Total tests: ~s\n" (length *tests*))
-    (printf "Selected tags: ~s\n" run-tags)
-    (letrec ([tests (reverse *tests*)]
-             [accepted? (lambda (tags)
-                          (if (null? run-tags)
-                              #t
-                              (if (null? tags)
-                                  #f
-                                  (or (member? (car tags) run-tags)
-                                      (accepted? (cdr tags))))))])
-      (printf "*tests*: ~s\n" tests)
-      (for-each-apply
-        (lambda (label tags tf)
-          (if (accepted? tags)
-              (printf "Running ~s\n" label)))
-        tests))))
+(define-syntax run-tests
+  (syntax-rules ()
+    ((_ active-tags tests ...)
+     (begin
+       (run-tests* active-tags)
+       tests ...
+       (print-test-report)))))
+
+(define (run-tests* tags)
+  (begin
+    (set! *depth* (+ *depth* 1))
+    (if (eq? *active-tags* #f)
+        (set! *active-tags* tags))))
 
 )
