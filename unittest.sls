@@ -3,14 +3,15 @@
 ;;; Its unique feature is the ability to select and execute tests by a set of
 ;;; tags. It works like this: each test is defined with a set of tags which
 ;;; during the execution are compared with a set of active tags defined by
-;;; `set-active-tags!` function. If these sets have common tags then the test
+;;; `active-tags` parameter If these sets have common tags then the test
 ;;; is executed, othervise it is ignored.
 ;;;
 ;;; Author:  Oleksandr Gituliar <oleksandr@gituliar.net>
 ;;; Version: 17.01.12
 
 (library (unittest)
-  (export assert-true? define-test let-test print-test-report set-active-tags!)
+  (export assert-eq? assert-eqv? assert-equal? assert-true? define-test let-test
+          print-test-report active-tags)
   (import (chezscheme))
 
 (define active-tags (make-parameter #f))
@@ -18,8 +19,25 @@
 (define success-count (make-parameter 0))
 
 
-(define (assert-true? ex)
-  (eq? ex #t))
+(define (true? x)
+  (eq? x #t))
+
+(define (make-assert check)
+  (lambda (arg . args)
+    (if (not (apply check arg args))
+        (raise-continuable 'error))))
+
+(define assert-eq?
+  (make-assert eq?))
+
+(define assert-eqv?
+  (make-assert eqv?))
+
+(define assert-equal?
+  (make-assert equal?))
+
+(define assert-true?
+  (make-assert true?))
 
 
 (define (member?  obj ls)
@@ -43,11 +61,24 @@
   (syntax-rules ()
     ((_ label tags body ...)
      (if (active-test? (quote tags))
-         (run-test label (quote tags) (lambda () body ...))))))
+         (call/cc
+           (lambda (k)
+             (with-exception-handler
+               (lambda (x)
+                 (failure-count (+ (failure-count) 1))
+                 (printf "FAIL\n")
+                 (k #f))
+               (lambda ()
+                 (printf "Run ~s\n" label)
+                 body ...
+                 (success-count (+ (success-count) 1))
+                 (printf "")))))))))
+
 
 (define (print-test-report)
   (let ((test-count (+ (success-count) (failure-count))))
    (begin
+     (printf "===============================================================================\n")
      (printf "Run ~s tests (PASS: ~s, FAIL: ~s)\n"
              test-count
              (success-count)
@@ -56,18 +87,8 @@
 (define-syntax let-test
   (syntax-rules ()
     ((_ ([v1 e1] ...) body ...)
-     (let ([v1 (delay (begin (printf "Eval ~s\n" 'v1) e1))] ...)
+     (let ([v1 (delay e1)] ...)
        (let-syntax
          ((v1 (identifier-syntax (force v1))) ...)
          body ...)))))
-
-(define (run-test label tags test)
-  (begin
-    (printf "Run ~s\n" label)
-    (test)
-    (success-count (+ (success-count) 1))))
-
-(define (set-active-tags! tags)
-  (active-tags tags))
-
 )

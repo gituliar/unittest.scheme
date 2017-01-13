@@ -14,7 +14,7 @@
             (if (null? filenames)
                 (error 'unittest "no unit test files specified")
                 (begin
-                  (set-active-tags! (map string->tag tagnames))
+                  (active-tags (map string->tag tagnames))
                   (for-each load filenames))))
 
 (print-test-report)
