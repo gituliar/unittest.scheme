@@ -10,34 +10,25 @@
 ;;; Version: 17.01.12
 
 (library (unittest)
-  (export assert-eq? assert-eqv? assert-equal? assert-true? define-test let-test
+  (export assert-equal? assert-false? assert-true? define-test let-test
           print-test-report active-tags)
   (import (chezscheme))
 
 (define active-tags (make-parameter #f))
+(define assert-count (make-parameter 0))
 (define failure-count (make-parameter 0))
 (define success-count (make-parameter 0))
 
+(define (assert-equal? actual expected)
+  (assert-count (+ (assert-count) 1))
+  (if (not (equal? actual expected))
+      (raise-continuable (list actual expected))))
 
-(define (true? x)
-  (eq? x #t))
+(define (assert-true? actual)
+  (assert-equal? actual #t))
 
-(define (make-assert check)
-  (lambda (arg . args)
-    (if (not (apply check arg args))
-        (raise-continuable 'error))))
-
-(define assert-eq?
-  (make-assert eq?))
-
-(define assert-eqv?
-  (make-assert eqv?))
-
-(define assert-equal?
-  (make-assert equal?))
-
-(define assert-true?
-  (make-assert true?))
+(define (assert-false? actual)
+  (assert-equal? actual #f))
 
 
 (define (member?  obj ls)
@@ -63,10 +54,13 @@
      (if (active-test? (quote tags))
          (call/cc
            (lambda (k)
+             (assert-count 0)
              (with-exception-handler
                (lambda (x)
                  (failure-count (+ (failure-count) 1))
-                 (printf "FAIL\n")
+                 (printf "FAIL #~s\n" (assert-count))
+                 (printf "  Expected: ~s\n" (cadr x))
+                 (printf "  Got:      ~s\n" (car x))
                  (k #f))
                (lambda ()
                  (printf "Run ~s\n" label)
