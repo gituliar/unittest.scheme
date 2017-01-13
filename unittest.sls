@@ -13,9 +13,9 @@
   (export assert-true? define-test let-test print-test-report set-active-tags!)
   (import (chezscheme))
 
-(define *active-tags* #f)
-(define *tests-fail* 0)
-(define *tests-pass* 0)
+(define active-tags (make-parameter #f))
+(define failure-count (make-parameter 0))
+(define success-count (make-parameter 0))
 
 
 (define (assert-true? ex)
@@ -26,9 +26,9 @@
     (and (member obj ls) #t))
 
 (define (active-test? test-tags)
-  (cond ((eq? *active-tags* #f)
+  (cond ((eq? (active-tags) #f)
          #f)
-        ((or (eq? *active-tags* #t)
+        ((or (eq? (active-tags) #t)
               (null? test-tags))
          #t)
         (else
@@ -36,7 +36,7 @@
               ([tags test-tags])
               (if (null? tags)
                   #f
-                  (or (member? (car tags) *active-tags*)
+                  (or (member? (car tags) (active-tags))
                       (active-test-rec? (cdr tags))))))))
 
 (define-syntax define-test
@@ -46,12 +46,12 @@
          (run-test label (quote tags) (lambda () body ...))))))
 
 (define (print-test-report)
-  (let ((tests-total (+ *tests-pass* *tests-fail*)))
+  (let ((test-count (+ (success-count) (failure-count))))
    (begin
      (printf "Run ~s tests (PASS: ~s, FAIL: ~s)\n"
-             tests-total
-             *tests-pass*
-             *tests-fail*))))
+             test-count
+             (success-count)
+             (failure-count)))))
 
 (define-syntax let-test
   (syntax-rules ()
@@ -65,9 +65,9 @@
   (begin
     (printf "Run ~s\n" label)
     (test)
-    (set! *tests-pass* (+ *tests-pass* 1))))
+    (success-count (+ (success-count) 1))))
 
 (define (set-active-tags! tags)
-  (set! *active-tags* tags))
+  (active-tags tags))
 
 )
