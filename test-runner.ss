@@ -15,6 +15,10 @@
                 (error 'unittest "no unit test files specified")
                 (begin
                   (active-tags (map string->tag tagnames))
-                  (for-each load filenames))))
+                  (for-each
+                     (lambda (name)
+                         (printf "File  ~a[34m~a~a[0m\n" #\esc name #\esc)
+                         (load name))
+                     filenames))))
 
 (print-test-report)

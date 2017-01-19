@@ -22,7 +22,7 @@
 (define (assert-equal? actual expected)
   (assert-count (+ (assert-count) 1))
   (if (not (equal? actual expected))
-      (raise-continuable (list actual expected))))
+      (raise-continuable (list 'unittest-error actual expected))))
 
 (define (assert-true? actual)
   (assert-equal? actual #t))
@@ -32,13 +32,13 @@
 
 
 (define (member?  obj ls)
-    (and (member obj ls) #t))
+  (and (member obj ls) #t))
 
 (define (active-test? test-tags)
   (cond ((eq? (active-tags) #f)
          #f)
         ((or (eq? (active-tags) #t)
-              (null? test-tags))
+             (null? test-tags))
          #t)
         (else
          (let active-test-rec?
@@ -57,13 +57,16 @@
              (assert-count 0)
              (with-exception-handler
                (lambda (x)
+                 (if (or (not (pair? x))
+                         (not (eq? (car x) 'unittest-error)))
+                     (raise x))
                  (failure-count (+ (failure-count) 1))
-                 (printf "FAIL #~s\n" (assert-count))
-                 (printf "  Expected: ~s\n" (cadr x))
-                 (printf "  Got:      ~s\n" (car x))
+                 (printf "~a[31mFAIL #~s~a[0m\n" #\esc (assert-count) #\esc)
+                 (printf "  Expected: ~s\n" (caddr x))
+                 (printf "  Got:      ~s\n" (cadr x))
                  (k #f))
                (lambda ()
-                 (printf "Run ~s\n" label)
+                 (printf "Check ~a[35m~a~a[0m\n" #\esc label #\esc)
                  body ...
                  (success-count (+ (success-count) 1))
                  (printf "")))))))))
@@ -71,12 +74,11 @@
 
 (define (print-test-report)
   (let ((test-count (+ (success-count) (failure-count))))
-   (begin
-     (printf "===============================================================================\n")
-     (printf "Run ~s tests (PASS: ~s, FAIL: ~s)\n"
-             test-count
-             (success-count)
-             (failure-count)))))
+    (printf "===============================================================================\n")
+    (printf "Run ~s tests (PASS: ~s, FAIL: ~s)\n"
+            test-count
+            (success-count)
+            (failure-count))))
 
 (define-syntax let-test
   (syntax-rules ()
