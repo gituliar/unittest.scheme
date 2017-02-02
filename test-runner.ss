@@ -21,4 +21,4 @@
                          (load name))
                      filenames))))
 
-(print-test-report)
+(display-test-report)
