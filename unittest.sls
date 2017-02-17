@@ -33,23 +33,20 @@
 (define (active-test? test-tags)
   (define (member?  obj ls)
     (and (member obj ls) #t))
-  (cond ((eq? (active-tags) #f)
-         #f)
-        ((or (eq? (active-tags) #t)
-             (null? test-tags))
-         #t)
+  (cond ((eq? (active-tags) #f) #f)
+        ((eq? (active-tags) #t) #t)
         (else
-         (let active-test-rec?
-              ([tags test-tags])
-              (if (null? tags)
-                  #f
-                  (or (member? (car tags) (active-tags))
-                      (active-test-rec? (cdr tags))))))))
+          (let active-test-rec?
+               ([tags test-tags])
+               (if (null? tags)
+                   #f
+                   (or (member? (car tags) (active-tags))
+                       (active-test-rec? (cdr tags))))))))
 
 (define-syntax define-test
   (syntax-rules ()
     ((_ label tags body ...)
-     (if (active-test? (quote tags))
+     (if (active-test? (if (null? (quote tags)) '(default) (quote tags)))
          (call/cc
            (lambda (k)
              (assert-count 0)
@@ -59,15 +56,18 @@
                          (not (eq? (car x) 'unittest-error)))
                      (raise x))
                  (failure-count (+ (failure-count) 1))
-                 (printf "~a[31mFAIL #~s~a[0m\n" #\esc (assert-count) #\esc)
+                 (printf (color 1 (format "FAIL #~s\n" (assert-count))))
                  (printf "  Expected: ~s\n" (caddr x))
                  (printf "  Got:      ~s\n" (cadr x))
                  (k #f))
                (lambda ()
-                 (printf "Check ~a[35m~a~a[0m\n" #\esc label #\esc)
+                 (printf "Check ~a\n" (color 5 label))
                  body ...
                  (success-count (+ (success-count) 1))
                  (printf "")))))))))
+
+(define (color code str)
+  (format "~a[3~am~a~a[0m" #\esc code str #\esc))
 
 (define (display-cost-center cs)
   (printf
