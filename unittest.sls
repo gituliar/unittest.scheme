@@ -10,8 +10,8 @@
 ;;; Version: 17.02.02
 
 (library (unittest)
-  (export active-tags assert-equal? assert-false? assert-true? define-test
-          display-test-report display-costs let-test)
+  (export active-tags assert-? assert-equal? assert-false? assert-true?
+          define-test display-test-report display-costs let-test)
   (import (chezscheme))
 
 (define active-tags (make-parameter #f))
@@ -19,10 +19,13 @@
 (define failure-count (make-parameter 0))
 (define success-count (make-parameter 0))
 
-(define (assert-equal? actual expected)
+(define (assert-? proc actual expected)
   (assert-count (+ (assert-count) 1))
-  (if (not (equal? actual expected))
+  (if (not (proc actual expected))
       (raise-continuable (list 'unittest-error actual expected))))
+
+(define (assert-equal? actual expected)
+  (assert-? equal? actual expected))
 
 (define (assert-true? actual)
   (assert-equal? actual #t))
@@ -57,6 +60,7 @@
                      (raise x))
                  (failure-count (+ (failure-count) 1))
                  (printf (color 1 (format "FAIL #~s\n" (assert-count))))
+                 (printf "  Code:     ~s\n" (list-ref '(body ...) (- (assert-count) 1)))
                  (printf "  Expected: ~s\n" (caddr x))
                  (printf "  Got:      ~s\n" (cadr x))
                  (k #f))
